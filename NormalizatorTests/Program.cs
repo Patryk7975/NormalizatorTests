@@ -9,5 +9,6 @@ var config = new ConfigurationBuilder()
 var originalFilePath = config["OriginalFilePath"];
 var resultFilePath = config["ResultFilePath"];
 var apiUrl = config["ApiUrl"];
+var probabilityThreshold = config.GetValue("ProbabilityThreshold", new decimal(0.8));
 
-TestEngine.RunTest(originalFilePath!, resultFilePath!, apiUrl!);
+TestEngine.RunTest(originalFilePath!, resultFilePath!, apiUrl!, probabilityThreshold!);

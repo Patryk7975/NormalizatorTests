@@ -5,7 +5,7 @@ namespace NormalizatorTests
 {
     internal class TestEngine
     {
-        public static void RunTest(string originalFilePath, string resultFilePath, string apiUrl)
+        public static void RunTest(string originalFilePath, string resultFilePath, string apiUrl, decimal probabilityThreshold)
         {
             using var workbook = new XLWorkbook(originalFilePath);
             var sheet = workbook.Worksheet(1);
@@ -18,7 +18,12 @@ namespace NormalizatorTests
             for (int i = 2; i <= rowsNo; i++)
             {
                 var result = GetResultForRow(sheet, i, indexes, apiUrl);
-                WriteRowResult(sheet, i, indexes, result);
+
+                if (result.CombinedProbability >= probabilityThreshold)
+                {
+                    WriteRowResult(sheet, i, indexes, result);
+                }
+                
                 SetBackroundColor(sheet, i);
             }
 
@@ -50,6 +55,7 @@ namespace NormalizatorTests
                     }
 
                     sheet.Cell(rowNo, i + 1).Style.Fill.BackgroundColor = color;
+                    sheet.Cell(rowNo, columnsNo).Value = color == XLColor.Red ? 0 : 1;
                 }
             }
         }
@@ -128,6 +134,12 @@ namespace NormalizatorTests
                     sheet.Cell(1, i + 1).Value = header.Replace("EXPECTED", "RESULT");
                 }
             }
+
+            columnsNo = sheet.Columns().Count();
+            sheet.Column(columnsNo).InsertColumnsAfter(1);
+            sheet.Cell(1, columnsNo + 1).Value = "IsCorrect";
+            sheet.Column(columnsNo + 1).SetAutoFilter();
+            sheet.Column(columnsNo + 1).Width = 15;
         }
 
         private static ColumnIndexes GetColumnIndexes(IXLWorksheet sheet)
