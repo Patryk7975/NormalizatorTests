@@ -55,7 +55,12 @@ namespace NormalizatorTests
                     }
 
                     sheet.Cell(rowNo, i + 1).Style.Fill.BackgroundColor = color;
-                    sheet.Cell(rowNo, columnsNo).Value = color == XLColor.Red ? 0 : 1;
+
+                    var isCorrectCurrentValue = sheet.Cell(rowNo, columnsNo).Value.ToString();
+                    if (isCorrectCurrentValue == "1" || isCorrectCurrentValue == string.Empty)
+                    {
+                        sheet.Cell(rowNo, columnsNo).Value = color == XLColor.Red ? 0 : 1;
+                    }                   
                 }
             }
         }
