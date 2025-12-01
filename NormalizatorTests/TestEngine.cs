@@ -19,9 +19,9 @@ namespace NormalizatorTests
             {
                 var result = GetResultForRow(sheet, i, indexes, apiUrl);
 
-                if (result.CombinedProbability >= probabilityThreshold)
+                if (result.NormalizationMetadata?.CombinedProbability >= probabilityThreshold && result.Address != null)
                 {
-                    WriteRowResult(sheet, i, indexes, result);
+                    WriteRowResult(sheet, i, indexes, result.Address);
                 }
                 
                 SetBackroundColor(sheet, i);
@@ -65,7 +65,7 @@ namespace NormalizatorTests
             }
         }
 
-        private static void WriteRowResult(IXLWorksheet sheet, int rowNo, ColumnIndexes idx, NormalizationApiResponseDto result)
+        private static void WriteRowResult(IXLWorksheet sheet, int rowNo, ColumnIndexes idx, ApiResponseAddressDto result)
         {
             sheet.Cell(rowNo, idx.ResultBuildingNoIndex).Value = result.BuildingNumber;
             sheet.Cell(rowNo, idx.ResultCityIndex).Value = result.City;
@@ -208,7 +208,27 @@ namespace NormalizatorTests
 
         private class NormalizationApiResponseDto
         {
-            public bool IsMultiFamily { get; set; }
+            public ApiResponseMetadataDto? NormalizationMetadata { get; set; }
+
+            public ApiResponseAddressDto? Address { get; set; }
+        }
+
+        private class ApiResponseMetadataDto
+        {
+            public decimal StreetProbability { get; set; }
+
+            public decimal PostalCodeProbability { get; set; }
+
+            public decimal CityProbability { get; set; }
+
+            public decimal CombinedProbability { get; set; }
+
+            public int? NormalizationId { get; set; }
+        }
+
+        private class ApiResponseAddressDto
+        {
+            public bool IsMultiFamily { get; set; } = false;
 
             public decimal? Longitude { get; set; }
 
@@ -216,13 +236,13 @@ namespace NormalizatorTests
 
             public string? PostOfficeLocation { get; set; }
 
-            public decimal CombinedProbability { get; set; }
-
             public string? Commune { get; set; }
 
             public string? Province { get; set; }
 
             public string? District { get; set; }
+
+            public string? StreetPrefix { get; set; }
 
             public string? StreetName { get; set; }
 
@@ -231,8 +251,6 @@ namespace NormalizatorTests
             public string? City { get; set; }
 
             public string? PostalCode { get; set; }
-
-            public string? StreetPrefix { get; set; }
         }
     }
 }
