@@ -14,7 +14,7 @@ namespace NormalizatorTests
 
             var indexes = GetColumnIndexes(sheet);
             var rowsNo = sheet.Rows().Count();
-         
+
             for (int i = 2; i <= rowsNo; i++)
             {
                 var result = GetResultForRow(sheet, i, indexes, apiUrl);
@@ -73,7 +73,8 @@ namespace NormalizatorTests
             sheet.Cell(rowNo, idx.ResultDistrictIndex).Value = result.District;
             sheet.Cell(rowNo, idx.ResultPostalCodeIndex).Value = result.PostalCode;
             sheet.Cell(rowNo, idx.ResultProvinceIndex).Value = result.Province;
-            sheet.Cell(rowNo, idx.ResultStreetIndex).Value = $"{result.StreetPrefix} {result.StreetName}"?.Trim(); ;
+            sheet.Cell(rowNo, idx.ResultStreetIndex).Value = result.StreetName;
+            sheet.Cell(rowNo, idx.ResultPrefixIndex).Value = result.StreetPrefix;
         }
 
         private static NormalizationApiResponseDto GetResultForRow(IXLWorksheet sheet, int rowNo, ColumnIndexes idx, string endpoint)
@@ -81,12 +82,15 @@ namespace NormalizatorTests
             try
             {
                 var streetName = sheet.Cell(rowNo, idx.RequestStreetIndex).Value.ToString();
+                var prefix = sheet.Cell(rowNo, idx.RequestPrefixIndex).Value.ToString();
                 var buildingNo = sheet.Cell(rowNo, idx.RequestBuildingNoIndex).Value.ToString();
                 var city = sheet.Cell(rowNo, idx.RequestCityIndex).Value.ToString();
                 var postalCode = sheet.Cell(rowNo, idx.RequestPostalCodeIndex).Value.ToString();
 
                 if (streetName == "null")
                     streetName = string.Empty;
+                if (prefix == "null")
+                    prefix = string.Empty;
                 if (buildingNo == "null")
                     buildingNo = string.Empty;
                 if (city == "null")
@@ -97,7 +101,7 @@ namespace NormalizatorTests
                 var body = new
                 {
                     StreetName = streetName,
-                    StreetPrefix = string.Empty,
+                    StreetPrefix = prefix,
                     BuildingNumber = buildingNo,
                     City = city,
                     PostalCode = postalCode
@@ -159,8 +163,10 @@ namespace NormalizatorTests
 
                 if (header.Contains("REQUEST"))
                 {
-                    if (header.Contains("street"))
+                    if (header.Contains("streetN"))
                         result.RequestStreetIndex = i;
+                    if (header.Contains("streetP"))
+                        result.RequestPrefixIndex = i;
                     if (header.Contains("building"))
                         result.RequestBuildingNoIndex = i;
                     if (header.Contains("city"))
@@ -171,8 +177,10 @@ namespace NormalizatorTests
 
                 if (header.Contains("RESULT"))
                 {
-                    if (header.Contains("street"))
+                    if (header.Contains("streetN"))
                         result.ResultStreetIndex = i;
+                    if (header.Contains("streetP"))
+                        result.ResultPrefixIndex = i;
                     if (header.Contains("building"))
                         result.ResultBuildingNoIndex = i;
                     if (header.Contains("city"))
@@ -194,10 +202,13 @@ namespace NormalizatorTests
         private class ColumnIndexes
         {
             public int RequestStreetIndex { get; set; }
+            public int RequestPrefixIndex { get; set; }
             public int RequestBuildingNoIndex { get; set; }
             public int RequestCityIndex { get; set; }
             public int RequestPostalCodeIndex { get; set; }
+      
             public int ResultStreetIndex { get; set; }
+            public int ResultPrefixIndex { get; set; }
             public int ResultBuildingNoIndex { get; set; }
             public int ResultCityIndex { get; set; }
             public int ResultPostalCodeIndex { get; set; }
