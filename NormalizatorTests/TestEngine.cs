@@ -1,11 +1,12 @@
 ﻿using ClosedXML.Excel;
+using System.Collections.Concurrent;
 using System.Net.Http.Json;
 
 namespace NormalizatorTests
 {
     internal class TestEngine
     {
-        public static void RunTest(string originalFilePath, string resultFilePath, string apiUrl, decimal probabilityThreshold)
+        public static async Task RunTest(string originalFilePath, string resultFilePath, string apiUrl, decimal probabilityThreshold, int maxParallelRequests)
         {
             using var workbook = new XLWorkbook(originalFilePath);
             var sheet = workbook.Worksheet(1);
@@ -15,19 +16,54 @@ namespace NormalizatorTests
             var indexes = GetColumnIndexes(sheet);
             var rowsNo = sheet.Rows().Count();
 
+            var semaphore = new SemaphoreSlim(maxParallelRequests);
+            var tasks = new List<Task>();
+            var results = new ConcurrentDictionary<int, NormalizationApiResponseDto>();
             for (int i = 2; i <= rowsNo; i++)
             {
-                var result = GetResultForRow(sheet, i, indexes, apiUrl);
+                tasks.Add(ProcessRow(sheet, i, indexes, apiUrl, probabilityThreshold, semaphore, results));
+            }
 
+            await Task.WhenAll(tasks);
+
+            for (int i = 2; i <= rowsNo; i++)
+            {
+                var result = results[i];
                 if (result.NormalizationMetadata?.CombinedProbability >= probabilityThreshold && result.Address != null)
                 {
                     WriteRowResult(sheet, i, indexes, result.Address);
                 }
-                
+
                 SetBackroundColor(sheet, i);
             }
 
             workbook.SaveAs(resultFilePath);
+        }
+
+        private static async Task ProcessRow(
+            IXLWorksheet sheet, 
+            int i, 
+            ColumnIndexes indexes, 
+            string apiUrl, 
+            decimal probabilityThreshold,
+            SemaphoreSlim semaphore,
+            ConcurrentDictionary<int, NormalizationApiResponseDto> results)
+        {
+            await semaphore.WaitAsync();
+
+            try
+            {
+                var result = await GetResultForRow(sheet, i, indexes, apiUrl);
+                results.TryAdd(i, result);
+            }
+            catch(Exception ex)
+            {
+                results.TryAdd(i, new NormalizationApiResponseDto());
+            }
+            finally
+            {
+                semaphore.Release();
+            }
         }
 
         private static void SetBackroundColor(IXLWorksheet sheet, int rowNo)
@@ -77,7 +113,7 @@ namespace NormalizatorTests
             sheet.Cell(rowNo, idx.ResultPrefixIndex).Value = result.StreetPrefix;
         }
 
-        private static NormalizationApiResponseDto GetResultForRow(IXLWorksheet sheet, int rowNo, ColumnIndexes idx, string endpoint)
+        private static async Task<NormalizationApiResponseDto> GetResultForRow(IXLWorksheet sheet, int rowNo, ColumnIndexes idx, string endpoint)
         {
             try
             {
@@ -109,13 +145,13 @@ namespace NormalizatorTests
 
                 using (var client = new HttpClient())
                 {
-                    var response = client.PostAsJsonAsync(endpoint, body).Result;
+                    var response = await client.PostAsJsonAsync(endpoint, body);
                     if (!response.IsSuccessStatusCode)
                     {
                         return new NormalizationApiResponseDto();
                     }
 
-                    var responseObject = response.Content.ReadFromJsonAsync<NormalizationApiResponseDto>().Result;
+                    var responseObject = await response.Content.ReadFromJsonAsync<NormalizationApiResponseDto>();
                     if (responseObject is null)
                     {
                         return new NormalizationApiResponseDto();

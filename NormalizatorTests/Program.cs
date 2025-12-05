@@ -10,5 +10,6 @@ var originalFilePath = config["OriginalFilePath"];
 var resultFilePath = config["ResultFilePath"];
 var apiUrl = config["ApiUrl"];
 var probabilityThreshold = config.GetValue("ProbabilityThreshold", new decimal(0.8));
+var maxParallelRequests = config.GetValue("MaxParallelRequests", 10);
 
-TestEngine.RunTest(originalFilePath!, resultFilePath!, apiUrl!, probabilityThreshold!);
+await TestEngine.RunTest(originalFilePath!, resultFilePath!, apiUrl!, probabilityThreshold, maxParallelRequests);
